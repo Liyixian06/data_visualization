@@ -51,14 +51,15 @@
       position: absolute;
       top: 0;
       left: 0;
+      z-index: 2;
     }
 
     /* bingtu SVG */
     #bingtu {
       position: absolute;
       top: 5vh;
-      left: 5vw;
-      width: 20vw;
+      left: 1vw;
+      width: 30vw;
       height: 20vw;
       z-index: 1;
     }
@@ -79,17 +80,24 @@
     .legend {
       font-size: 12px;
     }
+    #button-container {
+      width: 90vw;
+      margin: 0 auto;
+      padding-left: 40px;
+    }
   </style>
 </head>
 
 <body>
-  <div id="button-container"></div>
-  <div class="svg-container">
-    <svg width="30%" height="30%" id="bingtu"></svg>
-    <svg width="100%" height="100%" id="zhexian"></svg>
+  <div style="width: 90vw; margin: 0 auto;">
+    <div id="button-container"></div>
   </div>
-  <div style="margin-top: 20px;">
-    <svg width="90vw" height="30vh" id="stackedArea"></svg>
+  <div class="svg-container">
+    <svg width="100%" height="100%" id="zhexian"></svg>
+    <svg width="30%" height="30%" id="bingtu"></svg>
+  </div>
+  <div style="margin-top: 20px; margin-left: auto; margin-right: auto; width: 90vw;">
+    <svg width="100%" height="30vh" id="stackedArea"></svg>
   </div>
   <svg width="90vw" height="70vh" id="pic"></svg>
   <div id="tooltip" class="tooltip"></div>
@@ -134,7 +142,7 @@
                 image1.setAttribute('href', d.pic);  // 设置图片路径
                 // 将<image>元素添加到SVG中
                 var image2 = document.createElementNS("http://www.w3.org/2000/svg", "image");
-                // 设置图片的属性
+                // 设置图片属性
                 image2.setAttribute('x', '45vw');  // 设置图片X位置
                 image2.setAttribute('y', '0');  // 设置图片Y位置
                 image2.setAttribute('width', '45vw'); // 第一张图片的宽度
@@ -268,24 +276,38 @@
               .attr('d', arc)  // 使用弧生成器来计算路径
               .style('fill', (d, i) => colors[i]);  // 根据数据项的索引映射颜色
 
-            // 在每个扇区中添加文本标签
-            svg.selectAll('.label')
-               .data(pie(data))
-               .enter()
-               .append('text')
-               .attr('class', 'label')
-               .attr('transform', function(d, i) {
-                 let translate = arc.centroid(d);  // 获取扇区的中心位置
-                 if (i === 1) {
-                   // 对第二个扇区（索引为1）向上移动20像素
-                   translate[1] -= 20;
-                 }
-                 return 'translate(' + translate + ')';  // 返回新的位置
-               })
-               .text(function(d, i) { 
-                 // 如果是第一个扇区（索引为0），就不显示文本
-                 return i === 0 ? '' : d.data+"%";
-               });
+            // 添加图例
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${radius * 1.2}, ${-radius})`);  // 将图例放在饼图右上方
+
+            // 添加图例项
+            const legendItems = [
+                { label: '严重拥堵', color: colors[0], value: data[0] },
+                { label: '拥挤', color: colors[1], value: data[1] },
+                { label: '缓行', color: colors[2], value: data[2] },
+                { label: '畅通', color: colors[3], value: data[3] }
+            ].filter(item => item.value > 0);  // 过滤掉值为0的项
+
+            legend.selectAll("rect")
+                .data(legendItems)
+                .enter()
+                .append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 20)
+                .attr("width", 12)
+                .attr("height", 12)
+                .style("fill", d => d.color);
+
+            legend.selectAll("text")
+                .data(legendItems)
+                .enter()
+                .append("text")
+                .attr("x", 20)
+                .attr("y", (d, i) => i * 20 + 10)
+                .style("font-size", "12px")
+                .style("fill", "#333")
+                .text(d => `${d.label}: ${d.value}%`);
           })
           .on("mouseout", function() {
             d3.select(this).attr('r', 3)
@@ -305,7 +327,7 @@
       // 清除现有图表
       d3.select("#stackedArea").selectAll("*").remove();
       
-      const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+      const margin = { top: 20, right: 30, bottom: 40, left: 40 };
       const container = d3.select("#stackedArea").node().getBoundingClientRect();
       const width = container.width - margin.left - margin.right;
       const height = container.height - margin.top - margin.bottom;
