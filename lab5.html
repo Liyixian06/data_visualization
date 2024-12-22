@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3.js Line Chart from CSV</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .line {
+      fill: none;
+      stroke-width: 5;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      shape-rendering: crispEdges;
+    }
+    .circle {
+      fill: black;
+    }
+    .tooltip {
+      position: absolute;
+      background-color: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 5px;
+      border-radius: 5px;
+      pointer-events: none;
+      visibility: hidden;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #7BD3EA;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #FF9F45;
+    }
+    .svg-container {
+      position: relative;
+      width: 90vw;
+      height: 60vh;
+      margin: 0 auto;
+    }
+    /* zhexian SVG */
+    #zhexian {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* bingtu SVG */
+    #bingtu {
+      position: absolute;
+      top: 5vh;
+      left: 5vw;
+      width: 20vw;
+      height: 20vw;
+      z-index: 1;
+    }
+    .slice {
+      fill: steelblue;
+      stroke: #fff;
+      stroke-width: 1px;
+    }
+    .label {
+      font-size: 15px;
+      text-anchor: middle;
+      fill: black;
+    }
+    /* 添加堆叠面积图的样式 */
+    .area {
+      opacity: 0.7;
+    }
+    .legend {
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="button-container"></div>
+  <div class="svg-container">
+    <svg width="30%" height="30%" id="bingtu"></svg>
+    <svg width="100%" height="100%" id="zhexian"></svg>
+  </div>
+  <div style="margin-top: 20px;">
+    <svg width="90vw" height="30vh" id="stackedArea"></svg>
+  </div>
+  <svg width="90vw" height="70vh" id="pic"></svg>
+  <div id="tooltip" class="tooltip"></div>
+  <script>
+    const buttonData = [
+      { label: "12.01", day: "Sun", csvFile: "data1.csv", pic:"1.png"},
+      { label: "12.02", day: "Mon", csvFile: "data2.csv", pic:"2.png"},
+      { label: "12.03", day: "Tue", csvFile: "data3.csv", pic:"3.png"},
+      { label: "12.04", day: "Wed", csvFile: "data4.csv", pic:"4.png"},
+      { label: "12.05", day: "Thu", csvFile: "data5.csv", pic:"5.png"},
+      { label: "12.06", day: "Fri", csvFile: "data6.csv", pic:"6.png"},
+      { label: "12.07", day: "Sat", csvFile: "data7.csv", pic:"7.png"},
+    ];
+    const container = d3.select("#button-container");
+    // 使用 D3 创建并添加 7 个按钮
+    container.selectAll("button")
+             .data(buttonData)  // 将按钮数据绑定到每个按钮
+             .enter()
+             .append("button")
+             .html(d => `${d.label}, ${d.day}`)  // 使用 HTML 格式化文本
+             .style("margin", "5px")
+             .style("padding", "10px 20px")
+             .style("font-size", "16px")
+             .style("background-color", "#7BD3EA")
+             .style("border", "none")
+             .style("cursor", "pointer")
+             .style("border-radius", "5px")
+             .on("click", function(event, d) {
+                d3.select("#zhexian").selectAll("*").remove();
+                drawLineChart(d.csvFile);  // 点击时加载不同的CSV
+                // 获取SVG容器元素
+                var svgContainer = document.getElementById('pic');
+                // 清空SVG容器的内容
+                svgContainer.innerHTML = '';
+                // 创建SVG中的<image>元素
+                var image1 = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                // 设置图片的属性
+                image1.setAttribute('x', '0');  // 设置图片X位置
+                image1.setAttribute('y', '0');  // 设置图片Y位置
+                image1.setAttribute('width', '45vw'); // 第一张图片的宽度
+                image1.setAttribute('height', '45vw'); // 第一张图片的高度
+                image1.setAttribute('href', d.pic);  // 设置图片路径
+                // 将<image>元素添加到SVG中
+                var image2 = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                // 设置图片的属性
+                image2.setAttribute('x', '45vw');  // 设置图片X位置
+                image2.setAttribute('y', '0');  // 设置图片Y位置
+                image2.setAttribute('width', '45vw'); // 第一张图片的宽度
+                image2.setAttribute('height', '45vw'); // 第一张图片的高度
+                image2.setAttribute('href', "modle.png");  // 设置图片路径
+                // 将<image>元素添加到SVG中
+                svgContainer.appendChild(image2);
+                svgContainer.appendChild(image1);
+              })
+    // 1. 加载 CSV 文件
+    function drawLineChart(csvFile) {
+      d3.csv(csvFile).then(function(data) {
+        // 2. 解析日期和数值
+        data.forEach(function(d) {
+          const year = 2024;  // 获取当前年份
+          const month = 12;  // 月份（MM）
+          const day = d.time.substring(0, 2);    // 日期（DD）
+          const hour = d.time.substring(3, 5);   // 小时（HH）
+          const minute = d.time.substring(6, 8); // 分钟（MM）
+          // 构建标准日期字符串：YYYY-MM-DD HH:MM
+          const dateStr = `${year}-${month}-${day} ${hour}:${minute}`;
+          d.time = new Date(dateStr);
+          d.value = +d.value; // 转换为数字
+        });
+        // 3. 设置图表的尺寸和边距
+        const margin = { top: 20, right: 30, bottom: 40, left: 40 };
+        const container = d3.select("#zhexian").node().getBoundingClientRect();
+        const width = container.width - margin.left - margin.right;
+        const height = container.height - margin.top - margin.bottom;
+        const x = d3.scaleTime()
+                    .domain(d3.extent(data, d => d.time))  // 使用日期的最小最大值作为 x 轴的范围
+                    .range([0, width]);
+        const y = d3.scaleLinear()
+                    .domain([0, 0.24]) // 设置y轴范围为数据中的数值范围
+                    .range([height, 0]);     
+        // 4. 创建线生成器
+        const line = d3.line()
+                       .x(d => x(d.time))
+                       .y(d => y(d.value))
+                       .curve(d3.curveCardinal);
+        // 5. 创建SVG元素并添加折线
+        const svg = d3.select("#zhexian")
+                      .attr("width", width + margin.left + margin.right)
+                      .attr("height", height + margin.top + margin.bottom)
+                      .append("g")
+                      .attr("transform", `translate(${margin.left},${margin.top})`);
+        // 6. 添加折线图路径
+        const linePath = svg.append("path")
+                          .data([data])
+                          .attr("class", "line")
+                          .attr("d", line)
+                          .attr("stroke", "url(#gradient)") // 使用渐变
+                          .attr("stroke-width", 2)
+                          .attr("fill", "none");
+        // 获取路径的总长度
+        const pathLength = linePath.node().getTotalLength();
+
+        // 设置初始状态：路径长度为 0
+        linePath
+            .attr("stroke-dasharray", pathLength + " " + pathLength)
+            .attr("stroke-dashoffset", pathLength)
+            .transition()  // 开始动画
+            .duration(2000)  // 动画时长：2秒
+            .attr("stroke-dashoffset", 0);  // 逐步绘制路径
+        // 7. 创建渐变色
+        const gradient = svg.append("defs")
+                            .append("linearGradient")
+                            .attr("id", "gradient")
+                            .attr("x1", "0%")
+                            .attr("y1", "100%")  // 从下到上渐变
+                            .attr("x2", "0%")
+                            .attr("y2", "0%");
+        gradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#7BD3EA");
+        gradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#FF4B4B");
+        // 8. 添加x轴
+        svg.append("g")
+          .attr("transform", `translate(0,${height})`)
+          .call(d3.axisBottom(x).ticks(24));
+        // 9. 添加y轴
+        svg.append("g")
+          .call(d3.axisLeft(y).ticks(12));
+        // 10. 添加圆圈到每个数据点
+        svg.selectAll(".dot")
+          .data(data)
+          .enter().append("circle")
+          .attr("class", "circle")
+          .attr("cx", d => x(d.time))
+          .attr("cy", d => y(d.value))
+          .attr("r", 3)
+          .on("mouseover", function(event, d) {
+            d3.select(this).attr('r', 5)
+            // 显示tooltip
+            const tooltip = d3.select("#tooltip");
+            tooltip.style("visibility", "visible")
+                   .html("Time: " + d.time + "<br/>Value: " + d.value)
+            // 更新tooltip位置
+            tooltip.style("top", (event.pageY + 3) + "px")
+                   .style("left", (event.pageX + 3) + "px");
+
+            const data = [d.a,d.b,d.c,d.d];  // 你可以修改这里的数字，数据可以是百分比或数值
+            // 创建饼状图的饼生成器
+            const pie = d3.pie()
+              .value(d => d);  // 使用数据的值来计算角度
+
+            // 获取容器的实际尺寸
+            const bingtuContainer = d3.select("#bingtu").node().getBoundingClientRect();
+            const radius = Math.min(bingtuContainer.width, bingtuContainer.height) / 4;
+            
+            const arc = d3.arc()
+              .innerRadius(0)
+              .outerRadius(radius);
+            
+            const svg = d3.select('#bingtu')
+              .attr('width', '100%')
+              .attr('height', '100%')
+              .append('g')
+              .attr('transform', `translate(${bingtuContainer.width/2}, ${bingtuContainer.height/2})`);
+            
+            // 设置每个扇区的颜色
+            const colors = ['#FF4B4B', '#FF9F45', '#FFD371', '#7BD3EA'];
+            // 绑定数据并创建扇区
+            const slices = svg.selectAll('.slice')
+              .data(pie(data))
+              .enter()
+              .append('path')
+              .attr('class', 'slice')
+              .attr('d', arc)  // 使用弧生成器来计算路径
+              .style('fill', (d, i) => colors[i]);  // 根据数据项的索引映射颜色
+
+            // 在每个扇区中添加文本标签
+            svg.selectAll('.label')
+               .data(pie(data))
+               .enter()
+               .append('text')
+               .attr('class', 'label')
+               .attr('transform', function(d, i) {
+                 let translate = arc.centroid(d);  // 获取扇区的中心位置
+                 if (i === 1) {
+                   // 对第二个扇区（索引为1）向上移动20像素
+                   translate[1] -= 20;
+                 }
+                 return 'translate(' + translate + ')';  // 返回新的位置
+               })
+               .text(function(d, i) { 
+                 // 如果是第一个扇区（索引为0），就不显示文本
+                 return i === 0 ? '' : d.data+"%";
+               });
+          })
+          .on("mouseout", function() {
+            d3.select(this).attr('r', 3)
+            // 隐藏tooltip
+            d3.select("#tooltip").style("visibility", "hidden");
+            // 清空饼图
+            d3.select("#bingtu").selectAll("*").remove();
+          });
+
+        // 绘制堆叠面积图
+        drawStackedArea(data);
+      });
+    }
+
+    // 添加绘制堆叠面积图的函数
+    function drawStackedArea(data) {
+      // 清除现有图表
+      d3.select("#stackedArea").selectAll("*").remove();
+      
+      const margin = { top: 20, right: 30, bottom: 30, left: 40 };
+      const container = d3.select("#stackedArea").node().getBoundingClientRect();
+      const width = container.width - margin.left - margin.right;
+      const height = container.height - margin.top - margin.bottom;
+
+      const svg = d3.select("#stackedArea")
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // 准备数据
+      const keys = ['a', 'b', 'c', 'd'];
+      const stack = d3.stack().keys(keys)(data);
+
+      // 比例尺
+      const x = d3.scaleTime()
+        .domain(d3.extent(data, d => d.time))
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([0, 100])
+        .range([height, 0]);
+
+      // 定义面积生成器
+      const area = d3.area()
+        .x(d => x(d.data.time))
+        .y0(d => y(d[0]))
+        .y1(d => y(d[1]));
+
+      // 颜色比例尺
+      const color = d3.scaleOrdinal()
+        .domain(keys)
+        .range(['#FF4B4B', '#FF9F45', '#FFD371', '#7BD3EA']);
+
+      // 绘制面积
+      svg.selectAll("path")
+        .data(stack)
+        .join("path")
+        .attr("class", "area")
+        .attr("d", area)
+        .style("fill", d => color(d.key));
+
+      // 添加坐标轴
+      svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
+
+      svg.append("g")
+        .call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"));
+
+      // 添加图例
+      const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${width - 100}, 10)`);
+
+      const legendItems = [
+        { key: 'a', label: '严重拥堵' },
+        { key: 'b', label: '拥挤' },
+        { key: 'c', label: '缓行' },
+        { key: 'd', label: '畅通' }
+      ];
+
+      legend.selectAll("rect")
+        .data(legendItems)
+        .join("rect")
+        .attr("x", 0)
+        .attr("y", (d, i) => i * 20)
+        .attr("width", 15)
+        .attr("height", 15)
+        .style("fill", d => color(d.key));
+
+      legend.selectAll("text")
+        .data(legendItems)
+        .join("text")
+        .attr("x", 20)
+        .attr("y", (d, i) => i * 20 + 12)
+        .text(d => d.label);
+    }
+
+    // 添加窗口大小改变时的处理
+    window.addEventListener('resize', function() {
+      // 清除当前图表
+      d3.select("#zhexian").selectAll("*").remove();
+      d3.select("#bingtu").selectAll("*").remove();
+      
+      // 重新绘制当前显示的图表
+      const currentButton = d3.select("button.active");
+      if (currentButton.size()) {
+        drawLineChart(currentButton.datum().csvFile);
+      }
+    });
+  </script>
+</body>
+</html>
