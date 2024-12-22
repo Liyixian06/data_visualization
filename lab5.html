@@ -176,7 +176,7 @@
                     .domain(d3.extent(data, d => d.time))  // 使用日期的最小最大值作为 x 轴的范围
                     .range([0, width]);
         const y = d3.scaleLinear()
-                    .domain([0, 0.24]) // 设置y轴范围为数据中的数值范围
+                    .domain([0, 100])
                     .range([height, 0]);     
         // 4. 创建线生成器
         const line = d3.line()
