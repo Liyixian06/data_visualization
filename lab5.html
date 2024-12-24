@@ -111,13 +111,13 @@
   <div id="tooltip" class="tooltip"></div>
   <script>
     const buttonData = [
-      { label: "12.01", day: "Sun", csvFile: "data1.csv", road: "road1.csv"},
-      { label: "12.02", day: "Mon", csvFile: "data2.csv", road: "road2.csv"},
-      { label: "12.03", day: "Tue", csvFile: "data3.csv", road: "road3.csv"},
-      { label: "12.04", day: "Wed", csvFile: "data4.csv", road: "road4.csv"},
-      { label: "12.05", day: "Thu", csvFile: "data5.csv", road: "road5.csv"},
-      { label: "12.06", day: "Fri", csvFile: "data6.csv", road: "road6.csv"},
-      { label: "12.07", day: "Sat", csvFile: "data7.csv", road: "road7.csv"},
+      { label: "12.01", day: "Sun", csvFile: "./data/data1.csv", road: "./road/road1.csv"},
+      { label: "12.02", day: "Mon", csvFile: "./data/data2.csv", road: "./road/road2.csv"},
+      { label: "12.03", day: "Tue", csvFile: "./data/data3.csv", road: "./road/road3.csv"},
+      { label: "12.04", day: "Wed", csvFile: "./data/data4.csv", road: "./road/road4.csv"},
+      { label: "12.05", day: "Thu", csvFile: "./data/data5.csv", road: "./road/road5.csv"},
+      { label: "12.06", day: "Fri", csvFile: "./data/data6.csv", road: "./road/road6.csv"},
+      { label: "12.07", day: "Sat", csvFile: "./data/data7.csv", road: "./road/road7.csv"},
     ];
     const container = d3.select("#button-container");
     // 使用 D3 创建并添加 7 个按钮
@@ -240,6 +240,70 @@
             tooltip.style("top", (event.pageY + 3) + "px")
                    .style("left", (event.pageX + 3) + "px");
 
+            // 显示垂直光标
+            const cursorGroup = d3.select("#stackedArea")
+              .select(".cursor-group")
+              .style("display", null);
+            
+            // 获取堆叠面积图的x轴位置
+            const stackedAreaX = d3.select("#stackedArea")
+              .select("g")
+              .attr("transform")
+              .match(/translate\((\d+),/)[1];
+            
+            // 更新光标位置和数据
+            const xPos = x(d.time);
+            cursorGroup.select(".cursor-line")
+              .attr("x1", xPos)
+              .attr("x2", xPos);
+
+            // 计算标签位置（如果靠近右边界就显示在左边）
+            const labelX = xPos + 5;
+            const showOnLeft = (labelX + 150) > width; // 150是预估的标签宽度
+
+            // 更新数据标签
+            const labels = cursorGroup.select(".cursor-labels")
+              .selectAll("g")  // 改用g元素作为容器
+              .data([
+                { label: '严重拥堵', value: d.a, color: '#FF4B4B', offset: 20 },
+                { label: '拥挤', value: d.b, color: '#FF9F45', offset: 40 },
+                { label: '缓行', value: d.c, color: '#FFD371', offset: 60 },
+                { label: '畅通', value: d.d, color: '#98D8AA', offset: 80 }
+              ]);
+
+            // 移除旧的标签
+            labels.exit().remove();
+
+            // 添加新的标签组
+            const labelsEnter = labels.enter()
+              .append("g")
+              .attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`);
+
+            // 添加背景矩形
+            labelsEnter.append("rect")
+              .attr("width", 150)
+              .attr("height", 22)
+              .attr("rx", 4)  // 圆角
+              .attr("ry", 4)
+              .style("fill", "#333")  // 改为白色背景
+              .style("opacity", 0.95)  // 提高不透明度
+              .style("stroke", d => d.color)  // 使用对应的颜色作为边框
+              .style("stroke-width", 1.5);  // 适当的边框宽度
+
+            // 添加文本
+            labelsEnter.append("text")
+              .attr("x", 5)  // 文本在矩形内的padding
+              .attr("y", 15)
+              .style("font-size", "12px")
+              .style("font-weight", "bold")  // 文字加粗
+              .style("fill", d => d.color)
+              .text(d => `${d.label}: ${d.value}%`);
+
+            // 更新现有标签的位置和内容
+            labels.attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`)
+              .select("text")
+              .text(d => `${d.label}: ${d.value}%`);
+
             const data = [d.a,d.b,d.c,d.d];  // 你可以修改这里的数字，数据可以是百分比或数值
             // 创建饼状图的饼生成器
             const pie = d3.pie()
@@ -309,6 +373,10 @@
             d3.select("#tooltip").style("visibility", "hidden");
             // 清空饼图
             d3.select("#pie").selectAll("*").remove();
+            // 隐藏光标
+            d3.select("#stackedArea")
+              .select(".cursor-group")
+              .style("display", "none");
           });
 
         // 绘制堆叠面积图
@@ -329,6 +397,26 @@
       const svg = d3.select("#stackedArea")
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // 添加一个用于显示光标的组
+      const cursorGroup = svg.append("g")
+        .attr("class", "cursor-group")
+        .style("display", "none");
+
+      // 添加垂直光标线
+      cursorGroup.append("line")
+        .attr("class", "cursor-line")
+        .attr("y1", 0)
+        .attr("y2", height)
+        .style("stroke", "steelblue")  // 改为蓝色
+        .style("stroke-width", 2)      // 稍微加粗
+        .style("opacity", 0.8)         // 设置透明度
+        .style("stroke-dasharray", "none"); // 移除虚线样式
+
+      // 添加数据标签容器
+      cursorGroup.append("g")
+        .attr("class", "cursor-labels")
+        .attr("transform", "translate(10,0)"); // 向右偏移10像素
 
       // 准备数据
       const keys = ['a', 'b', 'c', 'd'];
@@ -425,7 +513,7 @@
             .attr("height", "100%")
             .attr("viewBox", `0 0 ${originalWidth} ${originalHeight}`);  // 使用原始尺寸的viewBox
 
-        // 确定经纬度的最小值和最大值
+        // 确定经纬度的最小和最大值
         const lonMin = d3.min(data, d => +d['经度']);
         const lonMax = d3.max(data, d => +d['经度']);
         const latMin = d3.min(data, d => +d['纬度']);
