@@ -111,13 +111,13 @@
   <div id="tooltip" class="tooltip"></div>
   <script>
     const buttonData = [
-      { label: "12.01", day: "Sun", csvFile: "./data/data1.csv", road: "./road/road1.csv"},
-      { label: "12.02", day: "Mon", csvFile: "./data/data2.csv", road: "./road/road2.csv"},
-      { label: "12.03", day: "Tue", csvFile: "./data/data3.csv", road: "./road/road3.csv"},
-      { label: "12.04", day: "Wed", csvFile: "./data/data4.csv", road: "./road/road4.csv"},
-      { label: "12.05", day: "Thu", csvFile: "./data/data5.csv", road: "./road/road5.csv"},
-      { label: "12.06", day: "Fri", csvFile: "./data/data6.csv", road: "./road/road6.csv"},
-      { label: "12.07", day: "Sat", csvFile: "./data/data7.csv", road: "./road/road7.csv"},
+      { label: "12.01", day: "Sun", csvFile: "./data/data1.csv", road: "./map/1.csv"},
+      { label: "12.02", day: "Mon", csvFile: "./data/data2.csv", road: "./map/2.csv"},
+      { label: "12.03", day: "Tue", csvFile: "./data/data3.csv", road: "./map/3.csv"},
+      { label: "12.04", day: "Wed", csvFile: "./data/data4.csv", road: "./map/4.csv"},
+      { label: "12.05", day: "Thu", csvFile: "./data/data5.csv", road: "./map/5.csv"},
+      { label: "12.06", day: "Fri", csvFile: "./data/data6.csv", road: "./map/6.csv"},
+      { label: "12.07", day: "Sat", csvFile: "./data/data7.csv", road: "./map/7.csv"},
     ];
     const container = d3.select("#button-container");
     // 使用 D3 创建并添加 7 个按钮
@@ -489,61 +489,204 @@
 
     // 添加绘制点图的函数
     function drawPointMap(roadFile) {
-      d3.csv(roadFile).then(function(data) {
-        // 设置原始宽高比
-        const originalWidth = 1221;
-        const originalHeight = 1052;
-        const aspectRatio = originalHeight / originalWidth;
-        
-        // 获取容器的实际尺寸
-        const container = d3.select("#pic").node().getBoundingClientRect();
-        let width = container.width;
-        let height = container.height;
-        
-        // 调整高度以保持原始比例
-        if (height / width > aspectRatio) {
-          height = width * aspectRatio;
-        } else {
-          width = height / aspectRatio;
-        }
-        
-        // 获取SVG画布
-        const svg = d3.select("#pic")
-            .attr("width", "100%")
-            .attr("height", "100%")
-            .attr("viewBox", `0 0 ${originalWidth} ${originalHeight}`);  // 使用原始尺寸的viewBox
+      // 获取SVG画布
+      const svg = d3.select("#pic")
+          .attr("width", "100%")
+          .attr("height", "100%")
+          .attr("viewBox", "0 0 1221 1052");
 
-        // 确定经纬度的最小和最大值
-        const lonMin = d3.min(data, d => +d['经度']);
-        const lonMax = d3.max(data, d => +d['经度']);
-        const latMin = d3.min(data, d => +d['纬度']);
-        const latMax = d3.max(data, d => +d['纬度']);
+      // 加载position.csv获取道路点位置
+      d3.csv("position.csv").then(function(positionData) {
+        // 计算经纬度范围
+        const lonMin = d3.min(positionData, d => +d.lon);
+        const lonMax = d3.max(positionData, d => +d.lon);
+        const latMin = d3.min(positionData, d => +d.lat);
+        const latMax = d3.max(positionData, d => +d.lat);
 
-        // 设置比例尺，使用原始尺寸
-        const xScale = d3.scaleLinear()
-            .domain([lonMin, lonMax])
-            .range([originalWidth * 0.05, originalWidth * 0.95]);
+        // 加载map目录下的时序数据
+        d3.csv(roadFile).then(function(timeData) {
+          const timePoints = timeData.columns.slice(1); // 获取所有时间点
+          let currentTimeIndex = 0;
 
-        const yScale = d3.scaleLinear()
-            .domain([latMin, latMax])
-            .range([originalHeight * 0.95, originalHeight * 0.05]);
+          // 创建时间轴比例尺
+          const timeScale = d3.scaleLinear()
+              .domain([0, timePoints.length - 1])
+              .range([40, 1171 - 40])  // 左右各留出40px的边距
+              .clamp(true);
 
-        // 绘制每个点，设置圆的颜色根据value值
-        svg.selectAll("circle")
-            .data(data)
-            .enter().append("circle")
-            .attr("cx", d => xScale(+d['经度']))
-            .attr("cy", d => yScale(+d['纬度']))
-            .attr("r", 2)  // 圆的半径
-            .attr("fill", function(d) {
-                switch (+d['value']) {
-                    case 4: return "#98D8AA";  // 通畅
-                    case 3: return "#FFD371";  // 缓行
-                    case 2: return "#FF9F45";  // 拥挤
-                    case 1: return "#FF4B4B";  // 严重拥堵
-                    default: return "black";    // 默认情况
-                }
-            });
+          // 添加时间轴
+          const slider = svg.append("g")
+              .attr("class", "slider")
+              .attr("transform", "translate(0,1020)");
+
+          slider.append("line")
+              .attr("class", "track")
+              .attr("x1", timeScale.range()[0])
+              .attr("x2", timeScale.range()[1])
+              .attr("stroke", "#ddd")
+              .attr("stroke-width", 2)
+              .attr("stroke-linecap", "round");
+
+          // 添加时间刻度
+          const timeLabels = ["00AM", "03AM", "06AM", "09AM", "12PM", "03PM", "06PM", "09PM", "12AM"];
+          // 计算刻度位置，根据宽度均匀分布
+          const width = timeScale.range()[1] - timeScale.range()[0];
+          const tickPositions = timeLabels.map((_, i) => 
+              Math.round((width * i / (timeLabels.length - 1)) / (width / (timePoints.length - 1)))
+          );
+
+          slider.selectAll(".tick")
+              .data(tickPositions)
+              .enter()
+              .append("g")
+              .attr("class", "tick")
+              .attr("transform", d => `translate(${timeScale(d)},0)`)
+              .call(g => {
+                  // 添加刻度线
+                  g.append("line")
+                      .attr("y1", -5)
+                      .attr("y2", 5)
+                      .attr("stroke", "#666")  // 深灰色
+                      .attr("stroke-width", 1);
+                  
+                  // 添加刻度文本
+                  g.append("text")
+                      .attr("y", 20)  // 调整文本位置
+                      .attr("text-anchor", "middle")
+                      .attr("fill", "#666")
+                      .style("font-size", "12px")
+                      .style("font-family", "Arial, sans-serif")
+                      .text((d, i) => timeLabels[i]);
+              });
+
+          // 添加拖拽按钮
+          const handle = slider.append("circle")
+              .attr("class", "handle")
+              .attr("r", 6)
+              .attr("cx", timeScale(currentTimeIndex))
+              .attr("fill", "#98D8AA")
+              .attr("stroke", "#54B435")
+              .attr("stroke-width", 2)
+              .style("cursor", "pointer")
+              // 添加鼠标悬停事件
+              .on("mouseover", function() {
+                  cursorGroup.style("display", null);  // 显示浮窗
+              })
+              .on("mouseout", function(event) {
+                  // 只有在不处于拖拽状态时才隐藏浮窗
+                  if (!event.buttons) {
+                      cursorGroup.style("display", "none");
+                  }
+              })
+              .call(d3.drag()
+                  .on("drag", dragged)
+                  .on("start", function() {
+                      d3.select(this).attr("fill", "#54B435");
+                  })
+                  .on("end", function() {
+                      d3.select(this).attr("fill", "#98D8AA");
+                      // 拖拽结束后，如果鼠标不在按钮上就隐藏浮窗
+                      const [x, y] = d3.pointer(event, this);
+                      const radius = 6;  // 按钮的半径
+                      if (Math.sqrt(x*x + y*y) > radius) {
+                          cursorGroup.style("display", "none");
+                      }
+                  }));
+
+          // 添加光标组
+          const cursorGroup = svg.append("g")
+              .attr("class", "time-cursor")
+              .style("display", "none");
+
+          // 添加时间浮窗
+          const timeTooltip = cursorGroup.append("g")
+              .attr("class", "time-tooltip")
+              .attr("transform", "translate(-40, 990)");  // 将浮窗移到时间轴上方
+
+          // 添加浮窗背景
+          timeTooltip.append("rect")
+              .attr("width", 80)
+              .attr("height", 25)
+              .attr("rx", 4)
+              .attr("ry", 4)
+              .attr("fill", "#333")
+              .attr("opacity", 0.8);
+
+          // 添加时间文本
+          timeTooltip.append("text")
+              .attr("x", 40)
+              .attr("y", 17)
+              .attr("text-anchor", "middle")
+              .attr("fill", "white")
+              .style("font-size", "12px")
+              .attr("class", "time-text");
+
+          // 绘制点图函数
+          function updatePoints(timeIndex) {
+            const currentTime = timePoints[timeIndex];
+            
+            // 更新光标位置和显示
+            const cursorX = timeScale(timeIndex);
+            cursorGroup.style("display", null)
+                .attr("transform", `translate(${cursorX},0)`);
+            
+            // 格式化时间显示
+            const hour = currentTime.substring(3, 5);
+            const minute = currentTime.substring(6, 8);
+            cursorGroup.select(".time-text")
+                .text(`${hour}:${minute}`);
+
+            // 设置比例尺，用经度和纬度转换为画布坐标
+            const xScale = d3.scaleLinear()
+                .domain([lonMin, lonMax])
+                .range([50, 1171]);  // 留出边距
+
+            const yScale = d3.scaleLinear()
+                .domain([latMin, latMax])
+                .range([1000, 50]);  // 留出边距，反转y轴
+
+            svg.selectAll("circle.road-point")
+                .data(positionData)
+                .join("circle")
+                .attr("class", "road-point")
+                .attr("cx", d => xScale(+d.lon))  // 使用计算出的比例尺
+                .attr("cy", d => yScale(+d.lat))  // 使用计算出的比例尺
+                .attr("r", 2.5)
+                .attr("fill", d => {
+                    const value = timeData[d.ORIG_FID][currentTime];
+                    switch (+value) {
+                        case 4: return "#98D8AA";  // 通畅
+                        case 3: return "#FFD371";  // 缓行
+                        case 2: return "#FF9F45";  // 拥挤
+                        case 1: return "#FF4B4B";  // 严重拥堵
+                        default: return "white";    // 没有数据，隐藏
+                    }
+                });
+          }
+
+          // 拖拽处理函数
+          function dragged(event) {
+            const x = event.x;
+            const index = Math.round(timeScale.invert(x));
+            handle.attr("cx", timeScale(index));
+            updatePoints(index);
+          }
+
+          // 在拖拽结束时隐藏光标
+          handle.call(d3.drag()
+              .on("drag", dragged)
+              .on("start", function() {
+                  d3.select(this).attr("fill", "#54B435");
+                  cursorGroup.style("display", null);  // 显示光标
+              })
+              .on("end", function() {
+                  d3.select(this).attr("fill", "#98D8AA");
+                  cursorGroup.style("display", "none");  // 隐藏光标
+              }));
+
+          // 初始绘制
+          updatePoints(currentTimeIndex);
+        });
       });
     }
 
