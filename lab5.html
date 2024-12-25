@@ -6,6 +6,19 @@
   <title>北京城区一周内的道路拥堵情况</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <style>
+    /* 配色变量 */
+    :root {
+      --primary-color: #2B3467;
+      --primary-light: #5C69BE;
+      --secondary-color: #BAD7E9;
+      --accent-color: #EB455F;
+      --success-color: #5C69BE;
+      --background-light: #F5F7FA;
+      --text-dark: #2C3333;
+      --text-light: #FCFCFC;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+    }
+
     .line {
       fill: none;
       stroke-width: 5;
@@ -20,31 +33,42 @@
     }
     .tooltip {
       position: absolute;
-      background-color: rgba(0, 0, 0, 0.6);
-      color: white;
-      padding: 5px;
-      border-radius: 5px;
+      background-color: var(--primary-color);
+      color: var(--text-light);
+      padding: 8px 12px;
+      border-radius: 6px;
       pointer-events: none;
       visibility: hidden;
+      font-size: 14px;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      box-shadow: 0 4px 6px var(--shadow-color);
+      border: 1px solid var(--secondary-color);
+      z-index: 1000;
     }
     button {
       margin: 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #98D8AA;
-      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      background-color: var(--background-light);
+      color: var(--primary-color);
+      border: 2px solid var(--primary-color);
       cursor: pointer;
-      border-radius: 5px;
-      transition: background-color 0.3s;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      box-shadow: 0 2px 4px var(--shadow-color);
     }
     button:hover {
-      background-color: #FF9F45;
+      background-color: var(--primary-color);
+      color: var(--text-light);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px var(--shadow-color);
     }
     .svg-container {
       position: relative;
       width: 90vw;
       height: 60vh;
-      margin: 0 auto;
+      margin: 40px auto 0;
     }
     /* line SVG */
     #line {
@@ -78,7 +102,10 @@
       opacity: 0.7;
     }
     .legend {
-      font-size: 12px;
+      font-size: 13px;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-weight: 500;
+      color: var(--text-dark);
     }
     #button-container {
       width: 90vw;
@@ -86,14 +113,129 @@
       text-align: center;
     }
     button.active {
-      background-color: #54B435 !important;
-      color: white;
+      background-color: var(--primary-color) !important;
+      color: var(--text-light) !important;
+      border-color: var(--primary-color) !important;
+      box-shadow: inset 0 2px 4px var(--shadow-color);
+    }
+    /* 添加标题样式 */
+    .chart-title {
+      text-align: center;
+      padding: 12px 16px;
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-color);
+      background-color: var(--background-light);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px var(--shadow-color);
+      transition: all 0.3s ease;
+      border-left: 4px solid var(--primary-color);
+    }
+    .title-container {
+      position: absolute;
+      width: 100%;
+      top: -40px;
+      left: 0;
+      z-index: 3;
+    }
+    /* 修改容器样式以适应标题 */
+    .svg-container {
+      position: relative;
+      width: 90vw;
+      height: 60vh;
+      margin: 40px auto 0;
+    }
+    .stacked-area-container {
+      position: relative;
+      margin: 40px auto 0;
+      width: 90vw;
+    }
+    .point-map-container {
+      position: relative;
+      margin: 40px auto 0;
+      width: 90vw;
+    }
+    /* 添加h1标题样式 */
+    .main-title {
+      text-align: center;
+      padding: 35px 0;
+      margin: 0 0 30px 0;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 50%, var(--secondary-color) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+      text-shadow: 2px 2px 4px var(--shadow-color);
+      animation: titleFadeIn 1s ease-out;
+    }
+    
+    .main-title::before,
+    .main-title::after {
+      content: "";
+      position: absolute;
+      bottom: 15px;
+      width: 100px;
+      height: 4px;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      border-radius: 4px;
+      box-shadow: 0 2px 4px var(--shadow-color);
+      transition: all 0.3s ease;
+    }
+    
+    .main-title::before {
+      left: 25%;
+      transform: translateX(-50%);
+    }
+    
+    .main-title::after {
+      right: 25%;
+      transform: translateX(50%);
+    }
+    
+    .main-title:hover::before {
+      left: 30%;
+      width: 120px;
+    }
+    
+    .main-title:hover::after {
+      right: 30%;
+      width: 120px;
+    }
+    
+    @keyframes titleFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 修改坐标轴文字样式 */
+    .axis text {
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      font-size: 12px;
+      fill: var(--text-dark);
+    }
+
+    .axis line,
+    .axis path {
+      stroke: var(--text-dark);
+      stroke-opacity: 0.2;
     }
   </style>
 </head>
 
 <body>
-  <h1 style="text-align: center; margin: 20px 0; color: #333; font-family: Arial, sans-serif;">
+  <h1 class="main-title">
     北京城区一周内的道路拥堵情况
   </h1>
   
@@ -101,13 +243,24 @@
     <div id="button-container"></div>
   </div>
   <div class="svg-container">
+    <div class="title-container">
+      <h3 class="chart-title" id="line-title" style="display: none;">北京城区道路拥堵指数变化趋势</h3>
+    </div>
     <svg width="100%" height="100%" id="line"></svg>
     <svg width="30%" height="30%" id="pie"></svg>
   </div>
-  <div style="margin-top: 20px; margin-left: auto; margin-right: auto; width: 90vw;">
+  <div class="stacked-area-container">
+    <div class="title-container">
+      <h3 class="chart-title" id="stacked-title" style="display: none;">道路拥堵程度分布</h3>
+    </div>
     <svg width="100%" height="30vh" id="stackedArea"></svg>
   </div>
-  <svg width="90vw" height="50vh" id="pic" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="point-map-container">
+    <div class="title-container">
+      <h3 class="chart-title" id="map-title" style="display: none;">北京城区道路实时拥堵状态</h3>
+    </div>
+    <svg width="90vw" height="50vh" id="pic" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
   <div id="tooltip" class="tooltip"></div>
   <script>
     const buttonData = [
@@ -129,7 +282,7 @@
              // .style("margin", "5px")
              .style("padding", "10px 20px")
              .style("font-size", "16px")
-             .style("background-color", "#98D8AA")
+             .style("background-color", "var(--background-light)")
              .style("border", "none")
              .style("cursor", "pointer")
              .style("border-radius", "5px")
@@ -139,10 +292,41 @@
                 // 为当前按钮添加active类
                 d3.select(this).classed("active", true);
                 
-                d3.select("#line").selectAll("*").remove();
-                drawLineChart(d.csvFile);  // 点击时加载不同的CSV
+                // 显示所有图表标题
+                d3.select("#line-title").style("display", "block");
+                d3.select("#stacked-title").style("display", "block");
+                d3.select("#map-title").style("display", "block");
                 
-                // 清空并重绘点图
+                // 更新标题日期
+                const dateStr = `${d.label} ${d.day}`;
+                // 定义通用的标题样式
+                const titleStyle = selection => {
+                  selection
+                    .style("font-family", "'Microsoft YaHei', sans-serif")
+                    .style("color", "#1A5F7A") // 更改为深青色
+                    .style("font-weight", "600")
+                    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.1)")
+                    .style("letter-spacing", "1px")
+                    .style("background-color", "#F8F6F4") // 添加浅灰色背景
+                    .style("padding", "8px 12px") // 添加内边距使背景更明显
+                    .style("border-radius", "4px"); // 圆角边框
+                };
+                
+                // 应用样式到所有标题
+                d3.select("#line-title")
+                  .text(`${dateStr} 北京城区道路拥堵指数变化趋势`)
+                  .call(titleStyle);
+                
+                d3.select("#stacked-title")
+                  .text(`${dateStr} 道路拥堵程度分布`)
+                  .call(titleStyle);
+                
+                d3.select("#map-title")
+                  .text(`${dateStr} 北京城区道路实时拥堵状态`)
+                  .call(titleStyle);
+                d3.select("#line").selectAll("*").remove();
+                drawLineChart(d.csvFile);
+                
                 d3.select("#pic").selectAll("*").remove();
                 drawPointMap(d.road);
               })
@@ -151,7 +335,7 @@
       d3.csv(csvFile).then(function(data) {
         // 2. 解析日期和数值
         data.forEach(function(d) {
-          const year = 2024;  // 获取当前年份
+          const year = 2024;  // 获当前年份
           const month = 12;  // 月份（MM）
           const day = d.time.substring(0, 2);    // 日期（DD）
           const hour = d.time.substring(3, 5);   // 小时（HH）
@@ -161,69 +345,90 @@
           d.time = new Date(dateStr);
           d.value = +d.value; // 转换为数字
         });
+
         // 3. 设置图表的尺寸和边距
-        const margin = { top: 20, right: 30, bottom: 40, left: 40 };
+        const margin = { top: 20, right: 30, bottom: 60, left: 40 }; // 增加底部边距
         const container = d3.select("#line").node().getBoundingClientRect();
         const width = container.width - margin.left - margin.right;
         const height = container.height - margin.top - margin.bottom;
-        const x = d3.scaleTime()
-                    .domain(d3.extent(data, d => d.time))  // 使用日期的最小最大值作为 x 轴的范围
-                    .range([0, width]);
-        const y = d3.scaleLinear()
-                    .domain([0, 100])
-                    .range([height, 0]);     
-        // 4. 创建线生成器
-        const line = d3.line()
-                       .x(d => x(d.time))
-                       .y(d => y(d.value))
-                       .curve(d3.curveCardinal);
-        // 5. 创建SVG元素并添加折线
-        const svg = d3.select("#line")
-                      .attr("width", width + margin.left + margin.right)
-                      .attr("height", height + margin.top + margin.bottom)
-                      .append("g")
-                      .attr("transform", `translate(${margin.left},${margin.top})`);
-        // 6. 添加折线图路径
-        const linePath = svg.append("path")
-                          .data([data])
-                          .attr("class", "line")
-                          .attr("d", line)
-                          .attr("stroke", "url(#gradient)") // 使用渐变
-                          .attr("stroke-width", 2)
-                          .attr("fill", "none");
-        // 获取路径的总长度
-        const pathLength = linePath.node().getTotalLength();
 
-        // 设置初始状态：路径长度为 0
+        // 清除之前的内容并创建新的SVG
+        d3.select("#line").selectAll("*").remove();
+        const mainSvg = d3.select("#line")
+          .attr("width", "100%")
+          .attr("height", "100%")
+          .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`);
+
+        const chartGroup = mainSvg.append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // 4. 设置比例尺
+        const x = d3.scaleTime()
+          .domain(d3.extent(data, d => d.time))
+          .range([0, width]);
+
+        const y = d3.scaleLinear()
+          .domain([0, 100])
+          .range([height, 0]);
+
+        // 5. 创建线生成器
+        const line = d3.line()
+          .x(d => x(d.time))
+          .y(d => y(d.value))
+          .curve(d3.curveCardinal);
+
+        // 6. 创建渐变色
+        const gradient = chartGroup.append("defs")
+          .append("linearGradient")
+          .attr("id", "gradient")
+          .attr("x1", "0%")
+          .attr("y1", "100%")
+          .attr("x2", "0%")
+          .attr("y2", "0%");
+
+        gradient.append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", "#98D8AA");
+
+        gradient.append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", "#FF4B4B");
+
+        // 7. 添加折线图路径
+        const linePath = chartGroup.append("path")
+          .data([data])
+          .attr("class", "line")
+          .attr("d", line)
+          .attr("stroke", "url(#gradient)")
+          .attr("stroke-width", 2)
+          .attr("fill", "none");
+
+        // 获取路径的总长度并添加动画
+        const pathLength = linePath.node().getTotalLength();
         linePath
-            .attr("stroke-dasharray", pathLength + " " + pathLength)
-            .attr("stroke-dashoffset", pathLength)
-            .transition()  // 开始动画
-            .duration(2000)  // 动画时长：2秒
-            .attr("stroke-dashoffset", 0);  // 逐步绘制路径
-        // 7. 创建渐变色
-        const gradient = svg.append("defs")
-                            .append("linearGradient")
-                            .attr("id", "gradient")
-                            .attr("x1", "0%")
-                            .attr("y1", "100%")  // 从下到上渐变
-                            .attr("x2", "0%")
-                            .attr("y2", "0%");
-        gradient.append("stop")
-                .attr("offset", "0%")
-                .attr("stop-color", "#98D8AA");
-        gradient.append("stop")
-                .attr("offset", "100%")
-                .attr("stop-color", "#FF4B4B");
-        // 8. 添加x轴
-        svg.append("g")
+          .attr("stroke-dasharray", pathLength + " " + pathLength)
+          .attr("stroke-dashoffset", pathLength)
+          .transition()
+          .duration(2000)
+          .attr("stroke-dashoffset", 0);
+
+        // 8. 添加坐标轴
+        // 修改X轴文本样式
+        chartGroup.append("g")
           .attr("transform", `translate(0,${height})`)
-          .call(d3.axisBottom(x).ticks(24));
-        // 9. 添加y轴
-        svg.append("g")
+          .call(d3.axisBottom(x).ticks(24))
+          .selectAll("text")
+            .style("text-anchor", "end")
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", "rotate(-45)") // 旋转文本45度
+            .style("font-size", "10px"); // 稍微减小字体大小
+
+        chartGroup.append("g")
           .call(d3.axisLeft(y).ticks(12));
-        // 10. 添加圆圈到每个数据点
-        svg.selectAll(".dot")
+
+        // 9. 添加数据点
+        chartGroup.selectAll(".dot")
           .data(data)
           .enter().append("circle")
           .attr("class", "circle")
@@ -231,7 +436,7 @@
           .attr("cy", d => y(d.value))
           .attr("r", 3)
           .on("mouseover", function(event, d) {
-            d3.select(this).attr('r', 5)
+            d3.select(this).attr('r', 5);
             // 显示tooltip
             const tooltip = d3.select("#tooltip");
             tooltip.style("visibility", "visible")
@@ -265,10 +470,10 @@
             const labels = cursorGroup.select(".cursor-labels")
               .selectAll("g")  // 改用g元素作为容器
               .data([
-                { label: '严重拥堵', value: d.a, color: '#FF4B4B', offset: 20 },
-                { label: '拥挤', value: d.b, color: '#FF9F45', offset: 40 },
-                { label: '缓行', value: d.c, color: '#FFD371', offset: 60 },
-                { label: '畅通', value: d.d, color: '#98D8AA', offset: 80 }
+                { label: '严重拥堵', value: d.a, color: '#FF4B4B', offset: 20, bgColor: 'rgba(255,75,75,0.1)' },
+                { label: '拥挤', value: d.b, color: '#FF9F45', offset: 40, bgColor: 'rgba(255,159,69,0.1)' },
+                { label: '缓行', value: d.c, color: '#FFD371', offset: 60, bgColor: 'rgba(255,211,113,0.1)' },
+                { label: '畅通', value: d.d, color: '#98D8AA', offset: 80, bgColor: 'rgba(152,216,170,0.1)' }
               ]);
 
             // 移除旧的标签
@@ -331,7 +536,7 @@
               .enter()
               .append('path')
               .attr('class', 'slice')
-              .attr('d', arc)  // 使用弧生成器来计算路径
+              .attr('d', arc)  // 使用弧生成器计算路径
               .style('fill', (d, i) => colors[i]);  // 根据数据项的索引映射颜色
 
             // 添加图例
@@ -368,7 +573,7 @@
                 .text(d => `${d.label}: ${d.value}%`);
           })
           .on("mouseout", function() {
-            d3.select(this).attr('r', 3)
+            d3.select(this).attr('r', 3);
             // 隐藏tooltip
             d3.select("#tooltip").style("visibility", "hidden");
             // 清空饼图
@@ -422,8 +627,12 @@
         .domain(keys)
         .range(['#FF4B4B', '#FF9F45', '#FFD371', '#98D8AA']);
 
+      // 创建一个用于堆叠区域的组
+      const areaGroup = svg.append("g")
+        .attr("class", "area-group");
+
       // 绘制面积
-      svg.selectAll("path")
+      areaGroup.selectAll("path")
         .data(stack)
         .join("path")
         .attr("class", "area")
@@ -438,53 +647,77 @@
       svg.append("g")
         .call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"));
 
-      // 添加一个用于显示光标的组
-      const cursorGroup = svg.append("g")
-        .attr("class", "cursor-group")
-        .style("display", "none");
-
-      // 添加垂直光标线
-      cursorGroup.append("line")
-        .attr("class", "cursor-line")
-        .attr("y1", 0)
-        .attr("y2", height)
-        .style("stroke", "steelblue")  // 改为蓝色
-        .style("stroke-width", 2)      // 稍微加粗
-        .style("opacity", 0.8)         // 设置透明度
-        .style("stroke-dasharray", "none"); // 移除虚线样式
-
-      // 添加数据标签容器
-      cursorGroup.append("g")
-        .attr("class", "cursor-labels")
-        .attr("transform", "translate(10,0)"); // 向右偏移10像素
-
       // 添加图例
       const legend = svg.append("g")
         .attr("class", "legend")
         .attr("transform", `translate(${width - 100}, 10)`);
 
       const legendItems = [
-        { key: 'a', label: '严重拥堵' },
-        { key: 'b', label: '拥挤' },
-        { key: 'c', label: '缓行' },
-        { key: 'd', label: '畅通' }
+        { key: 'a', label: '严重拥堵', color: '#FF4B4B' },
+        { key: 'b', label: '拥挤', color: '#FF9F45' },
+        { key: 'c', label: '缓行', color: '#FFD371' },
+        { key: 'd', label: '畅通', color: '#98D8AA' }
       ];
 
-      legend.selectAll("rect")
+      // 添加图例背景
+      legend.append("rect")
+        .attr("class", "legend-background")
+        .attr("width", 100)
+        .attr("height", legendItems.length * 25)
+        .attr("x", -5)
+        .attr("y", -5)
+        .attr("rx", 5)
+        .attr("ry", 5)
+        .style("fill", "rgba(255, 255, 255, 0.9)")
+        .style("opacity", 0.8)
+        // .style("stroke", "var(--primary-color)")
+        // .style("stroke-width", "1px")
+        .style("filter", "drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))");
+
+      // 创建图例组
+      const legendGroups = legend.selectAll(".legend-group")
         .data(legendItems)
-        .join("rect")
-        .attr("x", 0)
-        .attr("y", (d, i) => i * 20)
+        .enter()
+        .append("g")
+        .attr("class", "legend-group")
+        .attr("transform", (d, i) => `translate(0, ${i * 25})`);
+
+      legendGroups.append("rect")
         .attr("width", 15)
         .attr("height", 15)
-        .style("fill", d => color(d.key));
+        .style("fill", d => d.color)
+        .style("stroke", "white")
+        .style("stroke-width", "1px");
 
-      legend.selectAll("text")
-        .data(legendItems)
-        .join("text")
-        .attr("x", 20)
-        .attr("y", (d, i) => i * 20 + 12)
+      legendGroups.append("text")
+        .attr("x", 25)
+        .attr("y", 12)
+        .style("font-size", "14px")
+        .style("font-family", "Microsoft YaHei, PingFang SC, sans-serif")
+        .style("fill", "var(--text-dark)")
         .text(d => d.label);
+
+      // 添加一个用于显示光标的组，确保它在最上层
+      const cursorGroup = svg.append("g")
+        .attr("class", "cursor-group")
+        .style("display", "none")
+        .style("pointer-events", "none");  // 确保光标不会影响鼠标事件
+
+      // 添加垂直光标线
+      cursorGroup.append("line")
+        .attr("class", "cursor-line")
+        .attr("y1", 0)
+        .attr("y2", height)
+        .style("stroke", "var(--primary-color)")
+        .style("stroke-width", 2)
+        .style("opacity", 0.8)
+        .style("stroke-dasharray", "none");
+
+      // 添加数据标签容器，确保它在最上层
+      const labelsGroup = cursorGroup.append("g")
+        .attr("class", "cursor-labels")
+        .attr("transform", "translate(10,0)")
+        .style("pointer-events", "none");  // 确保标签不会影响鼠标事件
 
       // 添加透明的交互层
       svg.append("rect")
@@ -494,32 +727,24 @@
         .style("fill", "none")
         .style("pointer-events", "all")
         .on("mousemove", function(event) {
-          // 获取鼠标位置对应的时间
           const mouseX = d3.pointer(event)[0];
           const hoveredTime = x.invert(mouseX);
-
-          // 找到最接近的数据点
           const bisect = d3.bisector(d => d.time).left;
           const index = bisect(data, hoveredTime);
           const d = data[index];
 
           if (d) {
-            // 显示垂直光标
             cursorGroup.style("display", null);
-            
-            // 更新光标位置
             const xPos = x(d.time);
             cursorGroup.select(".cursor-line")
               .attr("x1", xPos)
               .attr("x2", xPos);
 
-            // 计算标签位置
             const labelX = xPos + 5;
             const showOnLeft = (labelX + 150) > width;
 
             // 更新数据标签
-            const labels = cursorGroup.select(".cursor-labels")
-              .selectAll("g")
+            const labels = labelsGroup.selectAll("g")
               .data([
                 { label: '严重拥堵', value: d.a, color: '#FF4B4B', offset: 20 },
                 { label: '拥挤', value: d.b, color: '#FF9F45', offset: 40 },
@@ -533,16 +758,18 @@
               .append("g")
               .attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`);
 
+            // 添加标签背景
             labelsEnter.append("rect")
               .attr("width", 150)
               .attr("height", 22)
               .attr("rx", 4)
               .attr("ry", 4)
-              .style("fill", "#333")
+              .style("fill", "var(--primary-color)")
               .style("opacity", 0.95)
               .style("stroke", d => d.color)
               .style("stroke-width", 1.5);
 
+            // 添加标签文本
             labelsEnter.append("text")
               .attr("x", 5)
               .attr("y", 15)
@@ -551,83 +778,15 @@
               .style("fill", d => d.color)
               .text(d => `${d.label}: ${d.value}%`);
 
+            // 更新现有标签
             labels.attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`)
               .select("text")
               .text(d => `${d.label}: ${d.value}%`);
-
-            // 更新饼图
-            const pieData = [d.a, d.b, d.c, d.d];
-            updatePieChart(pieData);
           }
         })
         .on("mouseout", function() {
-          // 隐藏光标
           cursorGroup.style("display", "none");
-          // 清空饼图
-          d3.select("#pie").selectAll("*").remove();
         });
-
-      // 添加更新饼图的函数
-      function updatePieChart(data) {
-        // 清空现有饼图
-        d3.select("#pie").selectAll("*").remove();
-
-        const pie = d3.pie().value(d => d);
-        const pieContainer = d3.select("#pie").node().getBoundingClientRect();
-        const radius = Math.min(pieContainer.width, pieContainer.height) / 4;
-        
-        const arc = d3.arc()
-          .innerRadius(0)
-          .outerRadius(radius);
-        
-        const svg = d3.select('#pie')
-          .attr('width', '100%')
-          .attr('height', '100%')
-          .append('g')
-          .attr('transform', `translate(${pieContainer.width/2}, ${pieContainer.height/2})`);
-        
-        const colors = ['#FF4B4B', '#FF9F45', '#FFD371', '#98D8AA'];
-        
-        svg.selectAll('.slice')
-          .data(pie(data))
-          .enter()
-          .append('path')
-          .attr('class', 'slice')
-          .attr('d', arc)
-          .style('fill', (d, i) => colors[i]);
-
-        // 添加图例
-        const legend = svg.append("g")
-          .attr("class", "legend")
-          .attr("transform", `translate(${radius * 1.2}, ${-radius})`);
-
-        const legendItems = [
-          { label: '严重拥堵', color: colors[0], value: data[0] },
-          { label: '拥挤', color: colors[1], value: data[1] },
-          { label: '缓行', color: colors[2], value: data[2] },
-          { label: '畅通', color: colors[3], value: data[3] }
-        ].filter(item => item.value > 0);
-
-        legend.selectAll("rect")
-          .data(legendItems)
-          .enter()
-          .append("rect")
-          .attr("x", 0)
-          .attr("y", (d, i) => i * 20)
-          .attr("width", 12)
-          .attr("height", 12)
-          .style("fill", d => d.color);
-
-        legend.selectAll("text")
-          .data(legendItems)
-          .enter()
-          .append("text")
-          .attr("x", 20)
-          .attr("y", (d, i) => i * 20 + 10)
-          .style("font-size", "12px")
-          .style("fill", "#333")
-          .text(d => `${d.label}: ${d.value}%`);
-      }
     }
 
     // 添加绘制点图的函数
@@ -698,7 +857,7 @@
           .attr("height", "100%")
           .attr("viewBox", "0 0 1221 1052");
 
-      // 加载position.csv获取道路点位置
+      // 加载position.csv获取道��点位置
       d3.csv("position.csv").then(function(positionData) {
         // 计算经纬度范围
         const lonMin = d3.min(positionData, d => +d.lon);
@@ -745,7 +904,7 @@
               .attr("class", "tick")
               .attr("transform", d => `translate(${timeScale(d)},0)`)
               .call(g => {
-                  // 添加刻度线
+                  // 添加度线
                   g.append("line")
                       .attr("y1", -5)
                       .attr("y2", 5)
@@ -895,7 +1054,7 @@
 
     // 添加窗口大小改变时的处理
     window.addEventListener('resize', function() {
-      // 清除当前图表
+      // 清当前图表
       d3.select("#line").selectAll("*").remove();
       d3.select("#pie").selectAll("*").remove();
       
