@@ -398,26 +398,6 @@
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-      // 添加一个用于显示光标的组
-      const cursorGroup = svg.append("g")
-        .attr("class", "cursor-group")
-        .style("display", "none");
-
-      // 添加垂直光标线
-      cursorGroup.append("line")
-        .attr("class", "cursor-line")
-        .attr("y1", 0)
-        .attr("y2", height)
-        .style("stroke", "steelblue")  // 改为蓝色
-        .style("stroke-width", 2)      // 稍微加粗
-        .style("opacity", 0.8)         // 设置透明度
-        .style("stroke-dasharray", "none"); // 移除虚线样式
-
-      // 添加数据标签容器
-      cursorGroup.append("g")
-        .attr("class", "cursor-labels")
-        .attr("transform", "translate(10,0)"); // 向右偏移10像素
-
       // 准备数据
       const keys = ['a', 'b', 'c', 'd'];
       const stack = d3.stack().keys(keys)(data);
@@ -457,6 +437,26 @@
 
       svg.append("g")
         .call(d3.axisLeft(y).ticks(5).tickFormat(d => d + "%"));
+
+      // 添加一个用于显示光标的组
+      const cursorGroup = svg.append("g")
+        .attr("class", "cursor-group")
+        .style("display", "none");
+
+      // 添加垂直光标线
+      cursorGroup.append("line")
+        .attr("class", "cursor-line")
+        .attr("y1", 0)
+        .attr("y2", height)
+        .style("stroke", "steelblue")  // 改为蓝色
+        .style("stroke-width", 2)      // 稍微加粗
+        .style("opacity", 0.8)         // 设置透明度
+        .style("stroke-dasharray", "none"); // 移除虚线样式
+
+      // 添加数据标签容器
+      cursorGroup.append("g")
+        .attr("class", "cursor-labels")
+        .attr("transform", "translate(10,0)"); // 向右偏移10像素
 
       // 添加图例
       const legend = svg.append("g")
