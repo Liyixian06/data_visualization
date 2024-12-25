@@ -83,7 +83,7 @@
     #button-container {
       width: 90vw;
       margin: 0 auto;
-      padding-left: 40px;
+      text-align: center;
     }
     button.active {
       background-color: #54B435 !important;
@@ -126,7 +126,7 @@
              .enter()
              .append("button")
              .html(d => `${d.label}, ${d.day}`)  // 使用 HTML 格式化文本
-             .style("margin", "5px")
+             // .style("margin", "5px")
              .style("padding", "10px 20px")
              .style("font-size", "16px")
              .style("background-color", "#98D8AA")
@@ -485,6 +485,209 @@
         .attr("x", 20)
         .attr("y", (d, i) => i * 20 + 12)
         .text(d => d.label);
+
+      // 添加透明的交互层
+      svg.append("rect")
+        .attr("class", "overlay")
+        .attr("width", width)
+        .attr("height", height)
+        .style("fill", "none")
+        .style("pointer-events", "all")
+        .on("mousemove", function(event) {
+          // 获取鼠标位置对应的时间
+          const mouseX = d3.pointer(event)[0];
+          const hoveredTime = x.invert(mouseX);
+
+          // 找到最接近的数据点
+          const bisect = d3.bisector(d => d.time).left;
+          const index = bisect(data, hoveredTime);
+          const d = data[index];
+
+          if (d) {
+            // 显示垂直光标
+            cursorGroup.style("display", null);
+            
+            // 更新光标位置
+            const xPos = x(d.time);
+            cursorGroup.select(".cursor-line")
+              .attr("x1", xPos)
+              .attr("x2", xPos);
+
+            // 计算标签位置
+            const labelX = xPos + 5;
+            const showOnLeft = (labelX + 150) > width;
+
+            // 更新数据标签
+            const labels = cursorGroup.select(".cursor-labels")
+              .selectAll("g")
+              .data([
+                { label: '严重拥堵', value: d.a, color: '#FF4B4B', offset: 20 },
+                { label: '拥挤', value: d.b, color: '#FF9F45', offset: 40 },
+                { label: '缓行', value: d.c, color: '#FFD371', offset: 60 },
+                { label: '畅通', value: d.d, color: '#98D8AA', offset: 80 }
+              ]);
+
+            labels.exit().remove();
+
+            const labelsEnter = labels.enter()
+              .append("g")
+              .attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`);
+
+            labelsEnter.append("rect")
+              .attr("width", 150)
+              .attr("height", 22)
+              .attr("rx", 4)
+              .attr("ry", 4)
+              .style("fill", "#333")
+              .style("opacity", 0.95)
+              .style("stroke", d => d.color)
+              .style("stroke-width", 1.5);
+
+            labelsEnter.append("text")
+              .attr("x", 5)
+              .attr("y", 15)
+              .style("font-size", "12px")
+              .style("font-weight", "bold")
+              .style("fill", d => d.color)
+              .text(d => `${d.label}: ${d.value}%`);
+
+            labels.attr("transform", d => `translate(${showOnLeft ? xPos - 155 : xPos + 5}, ${d.offset - 15})`)
+              .select("text")
+              .text(d => `${d.label}: ${d.value}%`);
+
+            // 更新饼图
+            const pieData = [d.a, d.b, d.c, d.d];
+            updatePieChart(pieData);
+          }
+        })
+        .on("mouseout", function() {
+          // 隐藏光标
+          cursorGroup.style("display", "none");
+          // 清空饼图
+          d3.select("#pie").selectAll("*").remove();
+        });
+
+      // 添加更新饼图的函数
+      function updatePieChart(data) {
+        // 清空现有饼图
+        d3.select("#pie").selectAll("*").remove();
+
+        const pie = d3.pie().value(d => d);
+        const pieContainer = d3.select("#pie").node().getBoundingClientRect();
+        const radius = Math.min(pieContainer.width, pieContainer.height) / 4;
+        
+        const arc = d3.arc()
+          .innerRadius(0)
+          .outerRadius(radius);
+        
+        const svg = d3.select('#pie')
+          .attr('width', '100%')
+          .attr('height', '100%')
+          .append('g')
+          .attr('transform', `translate(${pieContainer.width/2}, ${pieContainer.height/2})`);
+        
+        const colors = ['#FF4B4B', '#FF9F45', '#FFD371', '#98D8AA'];
+        
+        svg.selectAll('.slice')
+          .data(pie(data))
+          .enter()
+          .append('path')
+          .attr('class', 'slice')
+          .attr('d', arc)
+          .style('fill', (d, i) => colors[i]);
+
+        // 添加图例
+        const legend = svg.append("g")
+          .attr("class", "legend")
+          .attr("transform", `translate(${radius * 1.2}, ${-radius})`);
+
+        const legendItems = [
+          { label: '严重拥堵', color: colors[0], value: data[0] },
+          { label: '拥挤', color: colors[1], value: data[1] },
+          { label: '缓行', color: colors[2], value: data[2] },
+          { label: '畅通', color: colors[3], value: data[3] }
+        ].filter(item => item.value > 0);
+
+        legend.selectAll("rect")
+          .data(legendItems)
+          .enter()
+          .append("rect")
+          .attr("x", 0)
+          .attr("y", (d, i) => i * 20)
+          .attr("width", 12)
+          .attr("height", 12)
+          .style("fill", d => d.color);
+
+        legend.selectAll("text")
+          .data(legendItems)
+          .enter()
+          .append("text")
+          .attr("x", 20)
+          .attr("y", (d, i) => i * 20 + 10)
+          .style("font-size", "12px")
+          .style("fill", "#333")
+          .text(d => `${d.label}: ${d.value}%`);
+      }
+    }
+
+    // 添加绘制点图的函数
+    function drawPointMap(roadFile) {
+      d3.csv(roadFile).then(function(data) {
+        // 设置原始宽高比
+        const originalWidth = 1221;
+        const originalHeight = 1052;
+        const aspectRatio = originalHeight / originalWidth;
+        
+        // 获取容器的实际尺寸
+        const container = d3.select("#pic").node().getBoundingClientRect();
+        let width = container.width;
+        let height = container.height;
+        
+        // 调整高度以保持原始比例
+        if (height / width > aspectRatio) {
+          height = width * aspectRatio;
+        } else {
+          width = height / aspectRatio;
+        }
+        
+        // 获取SVG画布
+        const svg = d3.select("#pic")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${originalWidth} ${originalHeight}`);  // 使用原始尺寸的viewBox
+
+        // 确定经纬度的最小和最大值
+        const lonMin = d3.min(data, d => +d['经度']);
+        const lonMax = d3.max(data, d => +d['经度']);
+        const latMin = d3.min(data, d => +d['纬度']);
+        const latMax = d3.max(data, d => +d['纬度']);
+
+        // 设置比例尺，使用原始尺寸
+        const xScale = d3.scaleLinear()
+            .domain([lonMin, lonMax])
+            .range([originalWidth * 0.05, originalWidth * 0.95]);
+
+        const yScale = d3.scaleLinear()
+            .domain([latMin, latMax])
+            .range([originalHeight * 0.95, originalHeight * 0.05]);
+
+        // 绘制每个点，设置圆的颜色根据value值
+        svg.selectAll("circle")
+            .data(data)
+            .enter().append("circle")
+            .attr("cx", d => xScale(+d['经度']))
+            .attr("cy", d => yScale(+d['纬度']))
+            .attr("r", 2)  // 圆的半径
+            .attr("fill", function(d) {
+                switch (+d['value']) {
+                    case 4: return "#98D8AA";  // 通畅
+                    case 3: return "#FFD371";  // 缓行
+                    case 2: return "#FF9F45";  // 拥挤
+                    case 1: return "#FF4B4B";  // 严重拥堵
+                    default: return "black";    // 默认情况
+                }
+            });
+      });
     }
 
     // 添加绘制点图的函数
@@ -664,7 +867,7 @@
                 });
           }
 
-          // 拖拽处理函数
+          // 拖拽函数
           function dragged(event) {
             const x = event.x;
             const index = Math.round(timeScale.invert(x));
